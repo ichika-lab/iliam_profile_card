@@ -30,7 +30,7 @@ export default defineConfig({
         // Docker Desktop on Windows does not reliably forward inotify events
         watch: {
             usePolling: true,
-            interval: 10,
+            interval: 250,
         },
     },
 });

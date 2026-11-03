@@ -4,20 +4,28 @@ services:
       context: .
       dockerfile: Dockerfile
     image: iriam-app
-    restart: unless-stopped
+    # restart: unless-stopped
     working_dir: /var/www
     volumes:
       - .:/var/www
     ports:
-      - "8000:8000"
-      - "5173:5173"
-    command: >
-      sh -c "
-        php artisan migrate --force --seed &&
-        php artisan serve --host=0.0.0.0 --port=8000
-      "
+      - "127.0.0.1:8000:8000"
+    command: php artisan serve --host=0.0.0.0 --port=8000
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  vite:
+    image: iriam-app
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    ports:
+      - "127.0.0.1:5173:5173"
+    command: npm run dev
+    init: true
+    restart: "no"
 
   db:
     image: postgres:16-alpine
@@ -27,9 +35,15 @@ services:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d iriam_card"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
 volumes:
   pgdata:
