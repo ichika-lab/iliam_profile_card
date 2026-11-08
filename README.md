@@ -131,3 +131,7 @@ Viteを停止してビルド成果物を確認する場合は`public/hot`が残�
 - ローカルPostgreSQL 16.15と、新PHPイメージのPDOから`iriam_card`への読み取り接続を確認しました。既存PostgreSQLには`sessions`テーブルがなく、DBを更新しない検証では通常のDBセッションでログイン画面が500になりました。PostgreSQLでの本運用確認は、承認後のDB準備が必要です。
 - PHPUnitは一時コピーのメモリ内SQLiteで23件成功・2件失敗でした。失敗は既存`ProfileTest`の名前・メール更新とカード更新処理の不整合です。
 - 稼働中コンテナの再作成、既存DBへのマイグレーション・Seeder、SQLiteからのデータ移行は実行していません。既存`.env`・SQLiteファイルのハッシュは検証前後で一致しました。
+
+## Renderへの公開
+
+無料プラン用の公開設定と手順は[docs/render.md](docs/render.md)を参照してください。開発用のDockerfileとComposeは変更せず、Renderでは`Dockerfile.render`を指定します。

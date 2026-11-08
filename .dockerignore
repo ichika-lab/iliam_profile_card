@@ -1,4 +1,7 @@
 .git
+.codex
+.aws
+auth.json
 .env
 .env.*
 vendor
@@ -6,5 +9,6 @@ node_modules
 storage
 public/build
 public/hot
+public/storage
 database/*.sqlite
 database/*.sqlite-*

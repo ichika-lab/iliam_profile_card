@@ -1,0 +1,46 @@
+# Render用。ローカル開発は従来のDockerfileとcompose.yamlを使用する。
+FROM php:8.3-apache-bookworm AS php-base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git unzip libpq-dev libonig-dev libpng-dev \
+    && docker-php-ext-install pdo_pgsql mbstring bcmath gd opcache \
+    && a2enmod rewrite \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM php-base AS backend
+COPY --from=composer:2.8 /usr/bin/composer /usr/local/bin/composer
+WORKDIR /var/www/html
+COPY . .
+ENV APP_ENV=production APP_DEBUG=false LOG_CHANNEL=stderr
+# ホストのpackage discoveryキャッシュは引き継がず、本番依存だけで再生成する。
+RUN rm -f bootstrap/cache/*.php \
+    && mkdir -p storage/framework/cache/data storage/framework/sessions \
+        storage/framework/views storage/logs bootstrap/cache \
+    && composer install --no-dev --prefer-dist --no-interaction \
+        --optimize-autoloader --no-scripts \
+    && php artisan package:discover --ansi
+
+FROM node:22-bookworm-slim AS frontend
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY . .
+# app.jsはComposer版Ziggyを直接importする。
+COPY --from=backend /var/www/html/vendor/tightenco/ziggy ./vendor/tightenco/ziggy
+RUN npm run build
+
+FROM php-base AS runtime
+WORKDIR /var/www/html
+ENV APP_ENV=production APP_DEBUG=false LOG_CHANNEL=stderr \
+    DB_CONNECTION=pgsql SESSION_DRIVER=database SESSION_SECURE_COOKIE=true \
+    CACHE_STORE=database QUEUE_CONNECTION=sync MAIL_MAILER=log PORT=10000
+COPY --from=backend /var/www/html ./
+COPY --from=frontend /app/public/build ./public/build
+COPY docker/render/apache.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/render/ports.conf /etc/apache2/ports.conf
+COPY docker/render/prefork.conf /etc/apache2/mods-available/mpm_prefork.conf
+COPY docker/render/start.sh /usr/local/bin/render-start
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod 755 /usr/local/bin/render-start
+EXPOSE 10000
+CMD ["/bin/sh", "/usr/local/bin/render-start"]
